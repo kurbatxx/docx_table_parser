@@ -1,0 +1,12 @@
+[package]
+name = "docx_table_parser"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.68"
+clap = { version = "4.2.7", features = ["derive"] }
+docx-rs = "0.4.6"
+serde_json = "1.0.58"
