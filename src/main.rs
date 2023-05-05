@@ -48,7 +48,10 @@ fn read_table(node: &Value) {
                     cells.iter().for_each(|child| {
                         //
                         if child["type"] == "tableCell" {
-                            //dbg!(read_children(child));
+                            println!("-------------------------------------------");
+                            let mut t_cell = vec![];
+                            read_children(child, &mut t_cell);
+                            dbg!(t_cell);
                         }
                     })
                 }
@@ -57,25 +60,15 @@ fn read_table(node: &Value) {
     }
 }
 
-fn get_all_strings(node: &Value) -> Vec<Option<String>> {
-    let mut v = vec![];
-    v.push(read_children(node));
-
-    return v;
-}
-
-fn read_children(node: &Value) -> Option<String> {
-    let mut st = None;
+fn read_children(node: &Value, t_cell: &mut Vec<String>) {
     if let Some(children) = node["data"]["children"].as_array() {
         children.iter().for_each(|child| {
             if child["type"] != "text" {
-                read_children(child);
+                read_children(child, t_cell);
             } else {
-                //println!("{}", child["data"]["text"]);
-                //return child["data"]["text"].to_string();
-                st = Some(child["data"]["text"].to_string())
+                let st = child["data"]["text"].to_string();
+                t_cell.push(st.clone());
             }
         });
     }
-    st
 }
