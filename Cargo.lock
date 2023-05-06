@@ -213,6 +213,7 @@ dependencies = [
  "anyhow",
  "clap",
  "docx-rs",
+ "serde",
  "serde_json",
 ]
 

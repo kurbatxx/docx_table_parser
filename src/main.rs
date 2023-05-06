@@ -1,7 +1,10 @@
+use anyhow::Ok;
 use clap::{command, Parser};
 use docx_rs::*;
 use serde_json::Value;
-use std::io::Read;
+use std::{io::Read, ops::Not};
+
+mod model;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -11,19 +14,26 @@ struct Args {
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
-    parse_docx(&args.name)?;
+    let doc = parse_docx(&args.name)?;
+
     Ok(())
 }
 
-fn parse_docx(file_name: &str) -> anyhow::Result<()> {
+fn parse_docx(file_name: &str) -> anyhow::Result<Vec<Vec<Vec<Vec<String>>>>> {
     let data: Value = serde_json::from_str(&read_docx(&read_to_vec(file_name)?)?.json())?;
+    let mut v = vec![];
 
     if let Some(children) = data["document"]["children"].as_array() {
         dbg!(children.len());
-        children.iter().for_each(read_table);
+        v = children
+            .iter()
+            .map(read_table)
+            .filter(|x| x.is_empty().not())
+            .collect::<_>();
+        dbg!(&v[0]);
     }
 
-    Ok(())
+    Ok(v)
 }
 
 fn read_to_vec(file_name: &str) -> anyhow::Result<Vec<u8>> {
@@ -32,9 +42,9 @@ fn read_to_vec(file_name: &str) -> anyhow::Result<Vec<u8>> {
     Ok(buf)
 }
 
-fn read_table(node: &Value) {
+fn read_table(node: &Value) -> Vec<Vec<Vec<String>>> {
+    let mut table = vec![];
     if node["type"] == "table" {
-        let mut table = vec![];
         //fs::write("dbg.json", &node.to_string()).unwrap();
 
         if let Some(rows) = node["data"]["rows"].as_array() {
@@ -57,8 +67,9 @@ fn read_table(node: &Value) {
                 table.push(row_cell);
             });
         }
-        dbg!(table);
+        //dbg!(table);
     }
+    table
 }
 
 fn read_children(node: &Value, t_cell: &mut Vec<String>) {
