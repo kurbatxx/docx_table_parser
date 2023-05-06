@@ -1,7 +1,7 @@
 use clap::{command, Parser};
 use docx_rs::*;
-use serde_json::{json, Value};
-use std::{fs, io::Read};
+use serde_json::Value;
+use std::io::Read;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
@@ -17,10 +17,6 @@ fn main() -> anyhow::Result<()> {
 
 fn parse_docx(file_name: &str) -> anyhow::Result<()> {
     let data: Value = serde_json::from_str(&read_docx(&read_to_vec(file_name)?)?.json())?;
-
-    // if let Some(children) = data["document"]["children"].as_array() {
-    //     children.iter().for_each(read_children);
-    // }
 
     if let Some(children) = data["document"]["children"].as_array() {
         dbg!(children.len());
@@ -38,25 +34,30 @@ fn read_to_vec(file_name: &str) -> anyhow::Result<Vec<u8>> {
 
 fn read_table(node: &Value) {
     if node["type"] == "table" {
+        let mut table = vec![];
         //fs::write("dbg.json", &node.to_string()).unwrap();
 
         if let Some(rows) = node["data"]["rows"].as_array() {
             dbg!(rows.len());
             rows.iter().for_each(|child| {
-                //
+                let mut row_cell = vec![];
                 if let Some(cells) = child["data"]["cells"].as_array() {
                     cells.iter().for_each(|child| {
                         //
                         if child["type"] == "tableCell" {
-                            println!("-------------------------------------------");
+                            //println!("-------------------------------------------");
                             let mut t_cell = vec![];
                             read_children(child, &mut t_cell);
-                            dbg!(t_cell);
+
+                            row_cell.push(t_cell);
                         }
                     })
                 }
+                //dbg!(row_cell);
+                table.push(row_cell);
             });
         }
+        dbg!(table);
     }
 }
 
@@ -67,7 +68,7 @@ fn read_children(node: &Value, t_cell: &mut Vec<String>) {
                 read_children(child, t_cell);
             } else {
                 let st = child["data"]["text"].to_string();
-                t_cell.push(st.clone());
+                t_cell.push(st);
             }
         });
     }
