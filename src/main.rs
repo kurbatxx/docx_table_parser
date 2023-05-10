@@ -2,7 +2,9 @@ use anyhow::Ok;
 use clap::{command, Parser};
 use docx_rs::*;
 use serde_json::Value;
-use std::{io::Read, ops::Not};
+use std::{fs, io::Read, ops::Not};
+
+use crate::model::District;
 
 mod model;
 
@@ -15,7 +17,11 @@ struct Args {
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let doc = parse_docx(&args.name)?;
+    dbg!("-----------------------");
+    let row = &doc[0][1];
 
+    let dist = District::create(row.to_vec());
+    fs::write("resut.json", serde_json::to_string(&dist)?)?;
     Ok(())
 }
 
@@ -30,7 +36,6 @@ fn parse_docx(file_name: &str) -> anyhow::Result<Vec<Vec<Vec<Vec<String>>>>> {
             .map(read_table)
             .filter(|x| x.is_empty().not())
             .collect::<_>();
-        dbg!(&v[0]);
     }
 
     Ok(v)
@@ -63,11 +68,10 @@ fn read_table(node: &Value) -> Vec<Vec<Vec<String>>> {
                         }
                     })
                 }
-                //dbg!(row_cell);
+
                 table.push(row_cell);
             });
         }
-        //dbg!(table);
     }
     table
 }
