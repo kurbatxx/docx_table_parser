@@ -25,6 +25,7 @@ impl District {
             .filter(|s| s.to_string().is_empty().not())
             .map(|street| Street::create(street.to_string()))
             .collect();
+
         streets
     }
 
@@ -32,8 +33,6 @@ impl District {
         let mut dist = Self {
             ..Default::default()
         };
-
-        dbg!(row.len());
 
         for (i, item) in row.iter().enumerate() {
             let content = Self::cell_to_string(item.to_vec());
@@ -56,7 +55,9 @@ impl District {
 #[derive(Clone, Debug, Serialize)]
 pub struct Street {
     name: String,
-    numbers: Vec<String>,
+    // no show null
+    #[serde(skip_serializing_if = "Option::is_none")]
+    numbers: Option<Vec<String>>,
 }
 
 impl Street {
@@ -67,8 +68,11 @@ impl Street {
         let numbers = st.next().unwrap_or_default().trim().to_string();
         let numbers: Vec<_> = numbers.split(",").map(|v| v.trim().to_string()).collect();
 
-        dbg!(&name);
-        dbg!(&numbers);
+        let numbers = if numbers[0].is_empty() {
+            None
+        } else {
+            Some(numbers)
+        };
 
         Self {
             name: name.to_string(),

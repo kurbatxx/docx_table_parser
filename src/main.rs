@@ -24,9 +24,6 @@ fn main() -> anyhow::Result<()> {
         .map(|row| District::create(row.to_vec()))
         .collect();
 
-    //let row = &doc[0][1];
-    //let dist = District::create(row.to_vec());
-
     let raion = Raion::create(districts);
 
     fs::write("resut.json", serde_json::to_string(&raion)?)?;
