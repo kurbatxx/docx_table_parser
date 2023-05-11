@@ -78,15 +78,16 @@ impl Street {
 }
 
 #[derive(Clone, Debug, Serialize)]
-pub struct ModelController {
-    district_store: Vec<District>,
+pub struct Raion {
+    name: String,
+    districts: Vec<District>,
 }
 
-// Constructor
-impl ModelController {
-    pub fn new() -> Self {
+impl Raion {
+    pub fn create(vec: Vec<District>) -> Self {
         Self {
-            district_store: vec![],
+            name: "".to_string(),
+            districts: vec,
         }
     }
 }

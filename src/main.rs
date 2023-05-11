@@ -4,7 +4,7 @@ use docx_rs::*;
 use serde_json::Value;
 use std::{fs, io::Read, ops::Not};
 
-use crate::model::District;
+use crate::model::{District, Raion};
 
 mod model;
 
@@ -18,10 +18,18 @@ fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let doc = parse_docx(&args.name)?;
     dbg!("-----------------------");
-    let row = &doc[0][1];
 
-    let dist = District::create(row.to_vec());
-    fs::write("resut.json", serde_json::to_string(&dist)?)?;
+    let districts: Vec<_> = doc[0]
+        .iter()
+        .map(|row| District::create(row.to_vec()))
+        .collect();
+
+    //let row = &doc[0][1];
+    //let dist = District::create(row.to_vec());
+
+    let raion = Raion::create(districts);
+
+    fs::write("resut.json", serde_json::to_string(&raion)?)?;
     Ok(())
 }
 
