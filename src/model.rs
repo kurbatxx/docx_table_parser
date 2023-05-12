@@ -7,7 +7,7 @@ pub struct District {
     num: String,
     address: String,
     pub candidate: String,
-    streets: Vec<Street>,
+    pub streets: Vec<Street>,
 }
 
 impl District {
@@ -54,7 +54,7 @@ impl District {
 
 #[derive(Clone, Debug, Serialize)]
 pub struct Street {
-    name: String,
+    pub name: String,
     // no show null
     #[serde(skip_serializing_if = "Option::is_none")]
     numbers: Option<Vec<String>>,
@@ -84,7 +84,7 @@ impl Street {
 #[derive(Clone, Debug, Serialize)]
 pub struct Raion {
     name: String,
-    districts: Vec<District>,
+    pub districts: Vec<District>,
 }
 
 impl Raion {

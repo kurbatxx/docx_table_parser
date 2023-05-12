@@ -27,6 +27,18 @@ fn main() -> anyhow::Result<()> {
     let raion = Raion::create(districts);
 
     fs::write("resut.json", serde_json::to_string(&raion)?)?;
+
+    let mut all_streets: Vec<_> = raion
+        .districts
+        .iter()
+        .flat_map(|dist| dist.streets.clone())
+        .map(|f| f.name)
+        .collect();
+
+    all_streets.sort();
+
+    fs::write("streets.txt", all_streets.join("\n"))?;
+
     Ok(())
 }
 
