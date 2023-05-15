@@ -1,17 +1,16 @@
 [package]
-name = "docx_table_parser"
+name = "axum_server"
 version = "0.1.0"
 edition = "2021"
 
-[workspace]
-
-members = ["dioxus_app", "axum_server"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1"
-clap = { version = "4", features = ["derive"] }
-docx-rs = "0.4"
 
-serde_json = "1"
+tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+axum = "0.6"
+
+sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-rustls"] }
