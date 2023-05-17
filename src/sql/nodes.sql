@@ -37,4 +37,9 @@ VALUES (id, 'Актюбинская область'),
 END;
 $$;
 SELECT set_kz ();
--- @block create company table
+-- @block select nodes with current parrent
+SELECT node_id,
+    parrent_id,
+    node_name
+FROM node
+WHERE parrent_id = 1

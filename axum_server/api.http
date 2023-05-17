@@ -1,5 +1,7 @@
 @server_url = http://127.0.0.1:8080
 
 ###
+GET {{server_url}}/nodes HTTP/1.1
 
-GET {{server_url}}/root HTTP/1.1
+###
+GET {{server_url}}/node/1 HTTP/1.1
