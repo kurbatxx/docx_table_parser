@@ -1,10 +1,10 @@
 use axum::{
-    extract::{Path, Query, State},
-    routing::get,
+    extract::{self, Path, State},
+    routing::{get, post},
     Json, Router,
 };
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Pool, Postgres};
 
 pub use self::error::{Error, Result};
@@ -15,10 +15,11 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
     Router::new()
         .route("/nodes", get(nodes))
         .route("/node/:p_id", get(node))
+        .route("/create_node", post(create_node))
         .with_state(pool)
 }
 
-#[derive(FromRow, Serialize)]
+#[derive(Debug, FromRow, Serialize)]
 struct Node {
     node_id: i32,
     parrent_id: i32,
@@ -56,21 +57,28 @@ async fn node(
     Ok(Json(nodes))
 }
 
+#[derive(Debug, Deserialize)]
+struct CreateNode {
+    parrent_id: i32,
+    node_name: String,
+}
 async fn create_node(
     State(pool): State<Pool<Postgres>>,
-    Query(p_id): Query<i32>,
-) -> Result<Json<Vec<Node>>> {
-    dbg!(p_id);
+    extract::Json(payload): extract::Json<CreateNode>,
+) -> Result<Json<Node>> {
+    dbg!(&payload);
     let q = r#"
-    SELECT node_id, 
-        parrent_id, 
-        node_name 
-    FROM node 
-    WHERE parrent_id = $1
+    INSERT INTO node (parrent_id, node_name)
+    VALUES ($1, $2) 
+    returning node_id, parrent_id, node_name
     "#;
 
     let query = sqlx::query_as::<_, Node>(q);
 
-    let nodes = query.bind(p_id).fetch_all(&pool).await?;
-    Ok(Json(nodes))
+    let node = query
+        .bind(&payload.parrent_id)
+        .bind(&payload.node_name)
+        .fetch_one(&pool)
+        .await?;
+    Ok(Json(node))
 }
