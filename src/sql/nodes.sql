@@ -69,10 +69,31 @@ SELECT node_id,
     parrent_id,
     node_name
 FROM node
-WHERE parrent_id = 1;
+WHERE parrent_id = 16;
 -- @block insert one node
 INSERT INTO node (parrent_id, node_name)
-VALUES (16, 'dsf')
+VALUES (14, 'Район 2')
 returning node_id,
     parrent_id,
     node_name;
+-- @block select all
+-- @block select nodes with current parrent
+SELECT n1.node_id,
+    n1.parrent_id,
+    n1.node_name,
+    CASE
+        WHEN n.parrent_id > 0 THEN true
+        ELSE false
+    END as nested
+FROM node as n
+    RIGHT JOIN (
+        SELECT node_id,
+            parrent_id,
+            node_name
+        FROM node
+        WHERE parrent_id = 0
+    ) as n1 ON n1.node_id = n.parrent_id
+GROUP BY n1.node_id,
+    n1.node_name,
+    n1.parrent_id,
+    nested
