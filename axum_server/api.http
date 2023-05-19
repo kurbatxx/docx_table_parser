@@ -7,6 +7,9 @@ GET {{server_url}}/nodes HTTP/1.1
 GET {{server_url}}/node/16 HTTP/1.1
 
 ###
+GET {{server_url}}/node_with_nest/16 HTTP/1.1
+
+###
 POST {{server_url}}/create_node HTTP/1.1
 content-type: application/json
 

@@ -15,6 +15,7 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
     Router::new()
         .route("/nodes", get(nodes))
         .route("/node/:p_id", get(node))
+        .route("/node_with_nest/:p_id", get(node_with_nest))
         .route("/create_node", post(create_node))
         .with_state(pool)
 }
@@ -24,15 +25,23 @@ struct Node {
     node_id: i32,
     parrent_id: i32,
     node_name: String,
+    nested: bool,
 }
 
-async fn nodes(State(pool): State<Pool<Postgres>>) -> Result<Json<Vec<Node>>> {
+#[derive(Debug, FromRow, Serialize)]
+struct SimpleNode {
+    node_id: i32,
+    parrent_id: i32,
+    node_name: String,
+}
+
+async fn nodes(State(pool): State<Pool<Postgres>>) -> Result<Json<Vec<SimpleNode>>> {
     let q = r#"
     SELECT node_id, parrent_id, node_name 
     FROM node
     "#;
 
-    let query = sqlx::query_as::<_, Node>(q);
+    let query = sqlx::query_as::<_, SimpleNode>(q);
 
     let nodes = query.fetch_all(&pool).await?;
     Ok(Json(nodes))
@@ -41,7 +50,7 @@ async fn nodes(State(pool): State<Pool<Postgres>>) -> Result<Json<Vec<Node>>> {
 async fn node(
     State(pool): State<Pool<Postgres>>,
     Path(p_id): Path<i32>,
-) -> Result<Json<Vec<Node>>> {
+) -> Result<Json<Vec<SimpleNode>>> {
     dbg!(p_id);
     let q = r#"
     SELECT node_id, 
@@ -49,6 +58,39 @@ async fn node(
         node_name 
     FROM node 
     WHERE parrent_id = $1
+    "#;
+
+    let query = sqlx::query_as::<_, SimpleNode>(q);
+
+    let nodes = query.bind(p_id).fetch_all(&pool).await?;
+    Ok(Json(nodes))
+}
+
+async fn node_with_nest(
+    State(pool): State<Pool<Postgres>>,
+    Path(p_id): Path<i32>,
+) -> Result<Json<Vec<Node>>> {
+    dbg!(p_id);
+    let q = r#"
+    SELECT n1.node_id,
+    n1.parrent_id,
+    n1.node_name,
+    CASE
+        WHEN n.parrent_id > 0 THEN true
+        ELSE false
+    END as nested
+    FROM node as n
+    RIGHT JOIN (
+        SELECT node_id,
+            parrent_id,
+            node_name
+        FROM node
+        WHERE parrent_id = $1
+    ) as n1 ON n1.node_id = n.parrent_id
+    GROUP BY n1.node_id,
+    n1.node_name,
+    n1.parrent_id,
+    nested
     "#;
 
     let query = sqlx::query_as::<_, Node>(q);
