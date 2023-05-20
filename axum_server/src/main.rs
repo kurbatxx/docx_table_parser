@@ -11,7 +11,7 @@ mod db;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let url = "postgres://postgres:postgres@localhost:5432/izb";
+    let url = dotenvy::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&url)
@@ -28,4 +28,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-

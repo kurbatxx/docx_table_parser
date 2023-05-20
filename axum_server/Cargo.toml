@@ -14,3 +14,5 @@ serde_json = "1"
 axum = { version = "0.6", features = ["macros"] }
 
 sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-rustls"] }
+
+dotenvy = "0.15"
