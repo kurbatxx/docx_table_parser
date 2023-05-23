@@ -18,3 +18,16 @@ content-type: application/json
     "node_name": "Петропавловск"
 }
 
+
+###
+POST {{server_url}}/create_street HTTP/1.1
+content-type: application/json
+
+{
+    "node_id": 16,
+    "node_name": "Пушкина"
+}
+
+
+###
+GET {{server_url}}/get_streets/778d1c3b-cf00-438d-bc31-095f991e2247 HTTP/1.1

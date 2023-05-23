@@ -3,10 +3,21 @@ DROP TABLE IF EXISTS node;
 CREATE TABLE node(
     node_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     parrent_id integer,
-    node_name text
+    node_name text,
+    streets uuid
 );
 ALTER TABLE node
 ADD CONSTRAINT uniq_node_names_on_level UNIQUE (parrent_id, node_name);
+--
+--
+DROP TABLE IF EXISTS street;
+CREATE TABLE street(
+    street_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    street_uuid uuid,
+    street_name text
+);
+ALTER TABLE street
+ADD CONSTRAINT uniq_street_name_with_uuid UNIQUE (street_uuid, street_name);
 --
 --
 INSERT INTO node (parrent_id, node_name)
@@ -76,7 +87,6 @@ VALUES (14, 'Район 2')
 returning node_id,
     parrent_id,
     node_name;
--- @block select all
 -- @block select nodes with current parrent
 SELECT n1.node_id,
     n1.parrent_id,
@@ -96,4 +106,28 @@ FROM node as n
 GROUP BY n1.node_id,
     n1.node_name,
     n1.parrent_id,
-    nested
+    nested 
+    
+-- @block create street
+UPDATE node
+SET streets = COALESCE(streets, uuid_generate_v4())
+WHERE node_id = 19
+returning streets 
+
+-- @block insert street
+INSERT INTO street (street_uuid, street_name)
+VALUES 
+    (
+        '778d1c3b-cf00-438d-bc31-095f991e2247',
+        'Пушкина'
+    ),
+    (
+        '778d1c3b-cf00-438d-bc31-095f991e2247',
+        'Жумабаева'
+    )
+
+-- @block get streets
+
+SELECT street_id, street_uuid, street_name
+FROM street
+WHERE street_uuid = '778d1c3b-cf00-438d-bc31-095f991e2247'

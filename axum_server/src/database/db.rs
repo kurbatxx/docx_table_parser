@@ -7,6 +7,8 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Pool, Postgres};
 
+use uuid::Uuid;
+
 pub use self::error::{Error, Result};
 #[path = "../error.rs"]
 mod error;
@@ -17,6 +19,8 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/node/:p_id", get(node))
         .route("/node_with_nest/:p_id", get(node_with_nest))
         .route("/create_node", post(create_node))
+        .route("/create_street", post(create_street))
+        .route("/get_streets/:uuid", get(get_streets))
         .with_state(pool)
 }
 
@@ -123,4 +127,70 @@ async fn create_node(
         .fetch_one(&pool)
         .await?;
     Ok(Json(node))
+}
+
+#[derive(Debug, Deserialize)]
+struct CreateStreet {
+    node_id: i32,
+    street_name: String,
+}
+
+#[derive(Debug, FromRow, Serialize)]
+struct Street {
+    id: i32,
+    street_uuid: String,
+    street_name: String,
+}
+
+async fn create_street(
+    State(pool): State<Pool<Postgres>>,
+    extract::Json(payload): extract::Json<CreateStreet>,
+) -> Result<Json<Street>> {
+    let mut tnx = pool.begin().await?;
+
+    let streets_uuid_q = r#"
+    UPDATE node
+    SET streets = COALESCE(streets, uuid_generate_v4())
+    WHERE node_id = $1
+    returning streets
+    "#;
+
+    let create_street_q = r#"
+    INSERT INTO street (street_uuid, street_name)
+    VALUES ($1, $2)
+    retirning id, street_uuid, street_name
+    "#;
+
+    let streets_uuid: (String,) = sqlx::query_as(streets_uuid_q)
+        .bind(&payload.node_id)
+        .fetch_one(&mut tnx)
+        .await?;
+
+    let street = sqlx::query_as::<_, Street>(create_street_q)
+        .bind(&streets_uuid.0)
+        .bind(&payload.street_name)
+        .fetch_one(&mut tnx)
+        .await?;
+
+    tnx.commit().await?;
+
+    Ok(Json(street))
+}
+
+async fn get_streets(
+    State(pool): State<Pool<Postgres>>,
+    Path(uuid): Path<Uuid>,
+) -> Result<Json<Vec<Street>>> {
+    let streets_q = r#"
+    SELECT street_id, street_uuid, street_name
+    FROM street
+    WHERE street_uuid = $1
+    "#;
+
+    let streets = sqlx::query_as::<_, Street>(streets_q)
+        .bind(uuid)
+        .fetch_all(&pool)
+        .await?;
+
+    Ok(Json(streets))
 }

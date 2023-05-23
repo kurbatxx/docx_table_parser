@@ -2,4 +2,4 @@
 *.docx
 *.json
 *.txt
-axum_server/.env
+.env
