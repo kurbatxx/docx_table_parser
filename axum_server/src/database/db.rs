@@ -137,8 +137,8 @@ struct CreateStreet {
 
 #[derive(Debug, FromRow, Serialize)]
 struct Street {
-    id: i32,
-    street_uuid: String,
+    street_id: i32,
+    street_uuid: Uuid,
     street_name: String,
 }
 
@@ -158,10 +158,10 @@ async fn create_street(
     let create_street_q = r#"
     INSERT INTO street (street_uuid, street_name)
     VALUES ($1, $2)
-    retirning id, street_uuid, street_name
+    returning street_id, street_uuid, street_name
     "#;
 
-    let streets_uuid: (String,) = sqlx::query_as(streets_uuid_q)
+    let streets_uuid: (Uuid,) = sqlx::query_as(streets_uuid_q)
         .bind(&payload.node_id)
         .fetch_one(&mut tnx)
         .await?;
@@ -188,7 +188,7 @@ async fn get_streets(
     "#;
 
     let streets = sqlx::query_as::<_, Street>(streets_q)
-        .bind(uuid)
+        .bind(&uuid)
         .fetch_all(&pool)
         .await?;
 

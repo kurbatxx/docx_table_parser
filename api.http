@@ -24,8 +24,8 @@ POST {{server_url}}/create_street HTTP/1.1
 content-type: application/json
 
 {
-    "node_id": 16,
-    "node_name": "Пушкина"
+    "node_id": 19,
+    "street_name": "Букетова"
 }
 
 
