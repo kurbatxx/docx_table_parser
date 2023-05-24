@@ -21,6 +21,8 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/create_node", post(create_node))
         .route("/create_street", post(create_street))
         .route("/get_streets/:uuid", get(get_streets))
+        .route("/create_building", post(create_building))
+        .route("/get_buildings/:street_id", get(get_buildings))
         .with_state(pool)
 }
 
@@ -30,7 +32,7 @@ struct Node {
     parrent_id: i32,
     node_name: String,
     nested: bool,
-    streets_uuid: Option<Uuid>
+    streets_uuid: Option<Uuid>,
 }
 
 #[derive(Debug, FromRow, Serialize)]
@@ -127,7 +129,7 @@ async fn create_node(
 
     let node = query
         .bind(&payload.parrent_id)
-        .bind(&payload.node_name)
+        .bind(&payload.node_name.trim())
         .fetch_one(&pool)
         .await?;
     Ok(Json(node))
@@ -172,7 +174,7 @@ async fn create_street(
 
     let street = sqlx::query_as::<_, Street>(create_street_q)
         .bind(&streets_uuid.0)
-        .bind(&payload.street_name)
+        .bind(&payload.street_name.trim_end())
         .fetch_one(&mut tnx)
         .await?;
 
@@ -197,4 +199,54 @@ async fn get_streets(
         .await?;
 
     Ok(Json(streets))
+}
+
+#[derive(Debug, Deserialize)]
+struct CreateBuilding {
+    street_id: i32,
+    building_name: String,
+}
+
+#[derive(Debug, FromRow, Serialize)]
+struct Building {
+    building_id: i32,
+    street_id: i32,
+    building_name: String,
+}
+
+async fn create_building(
+    State(pool): State<Pool<Postgres>>,
+    extract::Json(payload): extract::Json<CreateBuilding>,
+) -> Result<Json<Building>> {
+    let create_building_q = r#"
+    INSERT INTO building (street_id, building_name)
+    VALUES ($1, $2),
+    returning building_id, street_id, building_name
+    "#;
+
+    let building = sqlx::query_as::<_, Building>(create_building_q)
+        .bind(&payload.street_id)
+        .bind(&payload.building_name.trim())
+        .fetch_one(&pool)
+        .await?;
+
+    Ok(Json(building))
+}
+
+async fn get_buildings(
+    State(pool): State<Pool<Postgres>>,
+    Path(street_id): Path<i32>,
+) -> Result<Json<Vec<Building>>> {
+    let buildings_q = r#"
+    SELECT building_id, street_id, building_name
+    FROM building
+    WHERE street_id = $1
+    "#;
+
+    let buildings = sqlx::query_as::<_, Building>(buildings_q)
+        .bind(&street_id)
+        .fetch_all(&pool)
+        .await?;
+
+    Ok(Json(buildings))
 }

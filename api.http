@@ -7,7 +7,7 @@ GET {{server_url}}/nodes HTTP/1.1
 GET {{server_url}}/node/16 HTTP/1.1
 
 ###
-GET {{server_url}}/node_with_nest/16 HTTP/1.1
+GET {{server_url}}/node_with_nest/0 HTTP/1.1
 
 ###
 POST {{server_url}}/create_node HTTP/1.1
@@ -31,3 +31,6 @@ content-type: application/json
 
 ###
 GET {{server_url}}/get_streets/778d1c3b-cf00-438d-bc31-095f991e2247 HTTP/1.1
+
+###
+GET {{server_url}}/get_buildings/1 HTTP/1.1
