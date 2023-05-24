@@ -4,7 +4,7 @@ CREATE TABLE node(
     node_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
     parrent_id integer,
     node_name text,
-    streets uuid
+    streets_uuid uuid
 );
 ALTER TABLE node
 ADD CONSTRAINT uniq_node_names_on_level UNIQUE (parrent_id, node_name);
@@ -16,8 +16,23 @@ CREATE TABLE street(
     street_uuid uuid,
     street_name text
 );
+
 ALTER TABLE street
 ADD CONSTRAINT uniq_street_name_with_uuid UNIQUE (street_uuid, street_name);
+
+--
+--
+
+DROP TABLE IF EXISTS building;
+CREATE TABLE building(
+    building_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    street_id integer,
+    building_name text
+);
+
+ALTER TABLE building
+ADD CONSTRAINT uniq_building_name_with_street_id UNIQUE (street_id, building_name);
+
 --
 --
 INSERT INTO node (parrent_id, node_name)
@@ -91,6 +106,7 @@ returning node_id,
 SELECT n1.node_id,
     n1.parrent_id,
     n1.node_name,
+    n1.streets_uuid,
     CASE
         WHEN n.parrent_id > 0 THEN true
         ELSE false
@@ -99,20 +115,22 @@ FROM node as n
     RIGHT JOIN (
         SELECT node_id,
             parrent_id,
-            node_name
+            node_name,
+            streets_uuid
         FROM node
         WHERE parrent_id = 0
     ) as n1 ON n1.node_id = n.parrent_id
 GROUP BY n1.node_id,
     n1.node_name,
     n1.parrent_id,
+    n1.streets_uuid,
     nested 
     
 -- @block create street
 UPDATE node
-SET streets = COALESCE(streets, uuid_generate_v4())
+SET streets_uuid = COALESCE(streets_uuid, uuid_generate_v4())
 WHERE node_id = 19
-returning streets 
+returning streets_uuid 
 
 -- @block insert street
 INSERT INTO street (street_uuid, street_name)
@@ -131,3 +149,14 @@ VALUES
 SELECT street_id, street_uuid, street_name
 FROM street
 WHERE street_uuid = '778d1c3b-cf00-438d-bc31-095f991e2247'
+
+-- @block create t
+DROP TABLE IF EXISTS building;
+CREATE TABLE building(
+    building_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    street_id integer,
+    building_name text
+);
+
+ALTER TABLE building
+ADD CONSTRAINT uniq_building_name_with_street_id UNIQUE (street_id, building_name);

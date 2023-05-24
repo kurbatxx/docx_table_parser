@@ -30,6 +30,7 @@ struct Node {
     parrent_id: i32,
     node_name: String,
     nested: bool,
+    streets_uuid: Option<Uuid>
 }
 
 #[derive(Debug, FromRow, Serialize)]
@@ -79,6 +80,7 @@ async fn node_with_nest(
     SELECT n1.node_id,
     n1.parrent_id,
     n1.node_name,
+    n1.streets_uuid,
     CASE
         WHEN n.parrent_id > 0 THEN true
         ELSE false
@@ -87,13 +89,15 @@ async fn node_with_nest(
     RIGHT JOIN (
         SELECT node_id,
             parrent_id,
-            node_name
+            node_name,
+            streets_uuid
         FROM node
         WHERE parrent_id = $1
     ) as n1 ON n1.node_id = n.parrent_id
     GROUP BY n1.node_id,
     n1.node_name,
     n1.parrent_id,
+    n1.streets_uuid,
     nested
     "#;
 
@@ -150,9 +154,9 @@ async fn create_street(
 
     let streets_uuid_q = r#"
     UPDATE node
-    SET streets = COALESCE(streets, uuid_generate_v4())
+    SET streets_uuid = COALESCE(streets_uuid, uuid_generate_v4())
     WHERE node_id = $1
-    returning streets
+    returning street_uuid
     "#;
 
     let create_street_q = r#"
