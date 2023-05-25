@@ -205,3 +205,18 @@ VALUES
     (1, '2'),
     (1, '4'),
     (1, '8');
+
+--@block
+-- @block remove
+DELETE FROM
+    node
+WHERE
+    node_id = 37
+    AND (
+        SELECT
+            COUNT(node_name)
+        FROM
+            node
+        WHERE
+            parrent_id = 37
+    ) = 0;

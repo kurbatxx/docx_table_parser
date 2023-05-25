@@ -19,6 +19,7 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/node/:p_id", get(node))
         .route("/node_with_nest/:p_id", get(node_with_nest))
         .route("/create_node", post(create_node))
+        .route("/drop_node/:node_id", post(drop_node))
         .route("/create_street", post(create_street))
         .route("/get_streets/:uuid", get(get_streets))
         .route("/create_building", post(create_building))
@@ -117,7 +118,7 @@ struct CreateNode {
 async fn create_node(
     State(pool): State<Pool<Postgres>>,
     extract::Json(payload): extract::Json<CreateNode>,
-) -> Result<Json<Node>> {
+) -> Result<Json<SimpleNode>> {
     dbg!(&payload);
     let q = r#"
     INSERT INTO node (parrent_id, node_name)
@@ -125,7 +126,7 @@ async fn create_node(
     returning node_id, parrent_id, node_name
     "#;
 
-    let query = sqlx::query_as::<_, Node>(q);
+    let query = sqlx::query_as::<_, SimpleNode>(q);
 
     let node = query
         .bind(&payload.parrent_id)
@@ -133,6 +134,32 @@ async fn create_node(
         .fetch_one(&pool)
         .await?;
     Ok(Json(node))
+}
+
+async fn drop_node(
+    State(pool): State<Pool<Postgres>>,
+    Path(node_id): Path<i32>,
+) -> Result<Json<Vec<Node>>> {
+    let q = r#"
+    DELETE FROM
+        node
+    WHERE
+        node_id = $1
+        AND (
+            SELECT
+                COUNT(node_name)
+            FROM
+                node
+            WHERE
+                parrent_id = $1
+        ) = 0
+    returning node_id, parrent_id, node_name
+    "#;
+
+    let query = sqlx::query_as::<_, Node>(q);
+
+    let nodes = query.bind(node_id).fetch_all(&pool).await?;
+    Ok(Json(nodes))
 }
 
 #[derive(Debug, Deserialize)]
