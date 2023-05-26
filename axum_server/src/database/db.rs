@@ -136,10 +136,68 @@ async fn create_node(
     Ok(Json(node))
 }
 
+#[derive(Debug, FromRow, Serialize)]
+struct Remove {
+    elements_count: i64,
+    parrent_id: i32,
+}
+
+#[derive(Debug, FromRow, Serialize)]
+struct Parrent {
+    parrent_id: i32,
+}
+
+#[derive(Debug, FromRow, Serialize)]
+struct Count {
+    count: i64,
+}
+
 async fn drop_node(
     State(pool): State<Pool<Postgres>>,
     Path(node_id): Path<i32>,
-) -> Result<Json<Vec<Node>>> {
+) -> Result<Json<Remove>> {
+    let mut tnx = pool.begin().await?;
+
+    let parrent_q = r#"
+    SELECT
+        parrent_id
+    FROM
+        node
+    WHERE
+        node_id = $1
+    "#;
+
+    let query = sqlx::query_as::<_, Parrent>(parrent_q);
+    let parrent = query.bind(node_id).fetch_one(&mut tnx).await?;
+
+    let mut pp = Parrent { parrent_id: 0 };
+
+    if parrent.parrent_id > 0 {
+        let pp_q = r#"
+        SELECT
+            parrent_id
+        FROM
+            node
+        WHERE
+            node_id = $1
+        "#;
+
+        let query = sqlx::query_as::<_, Parrent>(pp_q);
+        pp = query.bind(&parrent.parrent_id).fetch_one(&mut tnx).await?;
+    }
+
+    let count_q = r#"
+    SELECT
+        COUNT(node_name)
+    FROM
+        node
+    WHERE
+        parrent_id = $1
+    "#;
+
+    let query = sqlx::query_as::<_, Count>(count_q);
+    let count = query.bind(&parrent.parrent_id).fetch_one(&mut tnx).await?;
+
     let q = r#"
     DELETE FROM
         node
@@ -156,10 +214,17 @@ async fn drop_node(
     returning node_id, parrent_id, node_name
     "#;
 
-    let query = sqlx::query_as::<_, Node>(q);
+    let query = sqlx::query_as::<_, SimpleNode>(q);
+    let node = query.bind(node_id).fetch_one(&mut tnx).await?;
 
-    let nodes = query.bind(node_id).fetch_all(&pool).await?;
-    Ok(Json(nodes))
+    let remove = Remove {
+        elements_count: count.count - 1,
+        parrent_id: pp.parrent_id,
+    };
+
+    tnx.commit().await?;
+
+    Ok(Json(remove))
 }
 
 #[derive(Debug, Deserialize)]

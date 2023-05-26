@@ -169,8 +169,7 @@ GROUP BY
     n1.node_name,
     n1.parrent_id,
     n1.streets_uuid,
-    nested 
--- @block create street
+    nested -- @block create street
 UPDATE
     node
 SET
@@ -197,8 +196,8 @@ SELECT
 FROM
     street
 WHERE
-    street_uuid = '778d1c3b-cf00-438d-bc31-095f991e2247' -- @block create buildinng
-    -- @block 
+    street_uuid = '778d1c3b-cf00-438d-bc31-095f991e2247' 
+    -- @block create buildinng
 INSERT INTO
     building (street_id, building_name)
 VALUES
@@ -211,12 +210,47 @@ VALUES
 DELETE FROM
     node
 WHERE
-    node_id = 37
+    node_id = 91
     AND (
         SELECT
             COUNT(node_name)
         FROM
             node
         WHERE
-            parrent_id = 37
-    ) = 0;
+            parrent_id = 91
+    ) = 0 returning (
+        SELECT
+            COUNT(node_name)
+        FROM
+            node
+        WHERE
+            parrent_id = 40
+    ) --@block
+SELECT
+    COALESCE(
+        (
+            select
+                parrent_id
+            from
+                node
+            WHERE
+                node_id = 40
+        ),
+        0
+    ) as parrent_id,
+    COUNT(n.node_name) as elements_count
+FROM
+    node as n
+    RIGHT JOIN node ON n.parrent_id = node.node_id
+GROUP BY
+    n.parrent_id
+HAVING
+    n.parrent_id = 40 
+
+    -- @block
+SELECT
+    parrent_id
+FROM
+    node
+WHERE
+    node_id = 0

@@ -4,7 +4,7 @@
 GET {{server_url}}/nodes HTTP/1.1
 
 ###
-GET {{server_url}}/node/16 HTTP/1.1
+GET {{server_url}}/node/0 HTTP/1.1
 
 ###
 GET {{server_url}}/node_with_nest/40 HTTP/1.1
@@ -14,11 +14,11 @@ POST {{server_url}}/create_node HTTP/1.1
 content-type: application/json
 
 {
-    "parrent_id": 40,
-    "node_name": "Ещё какая-то__sfvsrgvvvv ++  "
+    "parrent_id": 95,
+    "node_name": "Првпacаптрапкукпивет"
 }
 ###
-POST {{server_url}}/drop_node/36 HTTP/1.1
+POST {{server_url}}/drop_node/102 HTTP/1.1
 
 
 ###
