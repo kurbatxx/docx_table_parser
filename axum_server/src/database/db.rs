@@ -215,7 +215,7 @@ async fn drop_node(
     "#;
 
     let query = sqlx::query_as::<_, SimpleNode>(q);
-    let node = query.bind(node_id).fetch_one(&mut tnx).await?;
+    let _node = query.bind(node_id).fetch_one(&mut tnx).await?;
 
     let remove = Remove {
         elements_count: count.count - 1,
@@ -250,7 +250,7 @@ async fn create_street(
     UPDATE node
     SET streets_uuid = COALESCE(streets_uuid, uuid_generate_v4())
     WHERE node_id = $1
-    returning street_uuid
+    returning streets_uuid
     "#;
 
     let create_street_q = r#"
@@ -263,6 +263,8 @@ async fn create_street(
         .bind(&payload.node_id)
         .fetch_one(&mut tnx)
         .await?;
+
+    dbg!(&streets_uuid);
 
     let street = sqlx::query_as::<_, Street>(create_street_q)
         .bind(&streets_uuid.0)
