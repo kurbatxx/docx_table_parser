@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::{
     extract::{self, Path, State},
     routing::{get, post},
@@ -5,8 +7,9 @@ use axum::{
 };
 
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool, Postgres};
+use sqlx::{FromRow, Pool, Postgres, Row};
 
+use strum_macros::EnumString;
 use uuid::Uuid;
 
 pub use self::error::{Error, Result};
@@ -24,8 +27,8 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/get_streets/:uuid", get(get_streets))
         .route("/create_building", post(create_building))
         .route("/get_buildings/:street_id", get(get_buildings))
+        .route("/update_name", post(update_name))
         .with_state(pool)
-        
 }
 
 #[derive(Debug, FromRow, Serialize)]
@@ -42,6 +45,62 @@ struct SimpleNode {
     node_id: i32,
     parrent_id: i32,
     node_name: String,
+}
+
+#[derive(Debug, FromRow, Serialize)]
+struct RenameObject {
+    node_id: i32,
+    object: String,
+    name: String,
+}
+
+#[derive(Debug, Serialize, EnumString)]
+#[strum(serialize_all = "shouty_snake_case")]
+enum Object {
+    Node,
+    Street,
+    Building,
+}
+
+async fn update_name(
+    State(pool): State<Pool<Postgres>>,
+    extract::Json(payload): extract::Json<RenameObject>,
+) -> Result<()> {
+    //let obj = Object::from_str(&payload.object);
+
+    let obj = match Object::from_str(&payload.object) {
+        Ok(it) => it,
+        Err(_) => return Err(Error::Other),
+    };
+
+    let q;
+    match obj {
+        Object::Node => {
+            q = r#"
+            UPDATE node
+            SET node_name = $1
+            WHERE node_id = $2;
+            "#;
+        }
+        Object::Street => {
+            q = r#"
+            UPDATE street
+            SET street_name = $1
+            WHERE street_id = $2;
+            "#;
+        }
+        Object::Building => {
+            q = r#"
+            UPDATE building
+            SET building_name = $1
+            WHERE building_id = $2;
+            "#;
+        }
+    }
+
+    let query = sqlx::query(q).bind(payload.name).bind(payload.node_id);
+    let _ = query.fetch_one(&pool).await?;
+    Ok(())
 }
 
 async fn nodes(State(pool): State<Pool<Postgres>>) -> Result<Json<Vec<SimpleNode>>> {
@@ -143,16 +202,6 @@ struct Remove {
     parrent_id: i32,
 }
 
-#[derive(Debug, FromRow, Serialize)]
-struct Parrent {
-    parrent_id: i32,
-}
-
-#[derive(Debug, FromRow, Serialize)]
-struct Count {
-    count: i64,
-}
-
 async fn drop_node(
     State(pool): State<Pool<Postgres>>,
     Path(node_id): Path<i32>,
@@ -168,12 +217,13 @@ async fn drop_node(
         node_id = $1
     "#;
 
-    let query = sqlx::query_as::<_, Parrent>(parrent_q);
-    let parrent = query.bind(node_id).fetch_one(&mut tnx).await?;
+    let query = sqlx::query(parrent_q);
+    let row = query.bind(node_id).fetch_one(&mut tnx).await?;
+    let parrent_id: i32 = row.get("parrent");
 
-    let mut pp = Parrent { parrent_id: 0 };
+    let mut pp = 0;
 
-    if parrent.parrent_id > 0 {
+    if parrent_id > 0 {
         let pp_q = r#"
         SELECT
             parrent_id
@@ -183,8 +233,9 @@ async fn drop_node(
             node_id = $1
         "#;
 
-        let query = sqlx::query_as::<_, Parrent>(pp_q);
-        pp = query.bind(&parrent.parrent_id).fetch_one(&mut tnx).await?;
+        let query = sqlx::query(pp_q);
+        let row = query.bind(&parrent_id).fetch_one(&mut tnx).await?;
+        pp = row.get("parrent_id")
     }
 
     let count_q = r#"
@@ -196,8 +247,9 @@ async fn drop_node(
         parrent_id = $1
     "#;
 
-    let query = sqlx::query_as::<_, Count>(count_q);
-    let count = query.bind(&parrent.parrent_id).fetch_one(&mut tnx).await?;
+    let query = sqlx::query(count_q);
+    let row = query.bind(&parrent_id).fetch_one(&mut tnx).await?;
+    let count: i64 = row.get("count");
 
     let q = r#"
     DELETE FROM
@@ -219,8 +271,8 @@ async fn drop_node(
     let _node = query.bind(node_id).fetch_one(&mut tnx).await?;
 
     let remove = Remove {
-        elements_count: count.count - 1,
-        parrent_id: pp.parrent_id,
+        elements_count: count - 1,
+        parrent_id: pp,
     };
 
     tnx.commit().await?;

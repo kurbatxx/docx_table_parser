@@ -24,3 +24,6 @@ uuid = { version = "1", features = ["serde", "v4"] }
 
 dotenvy = "0.15"
 local-ip-address = "0.5"
+
+strum = "0.24"
+strum_macros = "0.24"
