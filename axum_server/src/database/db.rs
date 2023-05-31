@@ -25,6 +25,7 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/create_building", post(create_building))
         .route("/get_buildings/:street_id", get(get_buildings))
         .with_state(pool)
+        
 }
 
 #[derive(Debug, FromRow, Serialize)]

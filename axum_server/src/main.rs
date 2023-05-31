@@ -1,9 +1,10 @@
 use std::net::SocketAddr;
 
 pub use self::error::{Error, Result};
-use axum::Router;
+use axum::{http::Method, Router};
 use local_ip_address::local_ip;
 use sqlx::postgres::PgPoolOptions;
+use tower_http::cors::{Any, CorsLayer};
 
 mod error;
 
@@ -18,7 +19,11 @@ async fn main() -> Result<()> {
         .connect(&url)
         .await?;
 
-    let routes_all = Router::new().merge(db::db_routes(pool));
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST])
+        .allow_origin(Any);
+
+    let routes_all = Router::new().merge(db::db_routes(pool).layer(cors));
 
     //let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
     let addr = format!("{}:{}", local_ip().unwrap(), 8080);
