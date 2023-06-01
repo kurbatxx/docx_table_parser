@@ -23,11 +23,11 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/node_with_nest/:p_id", get(node_with_nest))
         .route("/create_node", post(create_node))
         .route("/drop_node/:node_id", post(drop_node))
+        .route("/update_name", post(update_name))
         .route("/create_street", post(create_street))
         .route("/get_streets/:uuid", get(get_streets))
         .route("/create_building", post(create_building))
         .route("/get_buildings/:street_id", get(get_buildings))
-        .route("/update_name", post(update_name))
         .with_state(pool)
 }
 
@@ -47,14 +47,14 @@ struct SimpleNode {
     node_name: String,
 }
 
-#[derive(Debug, FromRow, Serialize)]
+#[derive(Debug, FromRow, Serialize, Deserialize)]
 struct RenameObject {
     node_id: i32,
     object: String,
     name: String,
 }
 
-#[derive(Debug, Serialize, EnumString)]
+#[derive(Debug, Serialize, Deserialize, EnumString)]
 #[strum(serialize_all = "shouty_snake_case")]
 enum Object {
     Node,
