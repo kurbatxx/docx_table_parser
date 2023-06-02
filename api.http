@@ -36,3 +36,14 @@ GET {{server_url}}/get_streets/778d1c3b-cf00-438d-bc31-095f991e2247 HTTP/1.1
 
 ###
 GET {{server_url}}/get_buildings/1 HTTP/1.1
+
+
+###
+POST {{server_url}}/update_name HTTP/1.1
+content-type: application/json
+
+{
+    "node_id": 67, 
+    "object":"NODE",  
+    "name": "yyyyyyyyyyyyy"
+}

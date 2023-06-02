@@ -55,7 +55,7 @@ struct RenameObject {
 }
 
 #[derive(Debug, Serialize, Deserialize, EnumString)]
-#[strum(serialize_all = "shouty_snake_case")]
+#[strum(serialize_all = "camelCase")]
 enum Object {
     Node,
     Street,
@@ -66,8 +66,6 @@ async fn update_name(
     State(pool): State<Pool<Postgres>>,
     extract::Json(payload): extract::Json<RenameObject>,
 ) -> Result<()> {
-    //let obj = Object::from_str(&payload.object);
-
     let obj = match Object::from_str(&payload.object) {
         Ok(it) => it,
         Err(_) => return Err(Error::Other),
@@ -100,6 +98,7 @@ async fn update_name(
 
     let query = sqlx::query(q).bind(payload.name).bind(payload.node_id);
     let _ = query.fetch_one(&pool).await?;
+    dbg!("rename");
     Ok(())
 }
 
@@ -179,7 +178,6 @@ async fn create_node(
     State(pool): State<Pool<Postgres>>,
     extract::Json(payload): extract::Json<CreateNode>,
 ) -> Result<Json<SimpleNode>> {
-    dbg!(&payload);
     let q = r#"
     INSERT INTO node (parrent_id, node_name)
     VALUES ($1, $2) 
