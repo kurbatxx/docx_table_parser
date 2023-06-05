@@ -217,7 +217,7 @@ async fn drop_node(
 
     let query = sqlx::query(parrent_q);
     let row = query.bind(node_id).fetch_one(&mut tnx).await?;
-    let parrent_id: i32 = row.get("parrent");
+    let parrent_id: i32 = row.get("parrent_id");
 
     let mut pp = 0;
 
