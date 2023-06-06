@@ -62,10 +62,15 @@ enum Object {
     Building,
 }
 
+#[derive(Serialize, FromRow)]
+struct Id {
+    id: i32,
+}
+
 async fn update_name(
     State(pool): State<Pool<Postgres>>,
     extract::Json(payload): extract::Json<RenameObject>,
-) -> Result<()> {
+) -> Result<Json<Id>> {
     let obj = match Object::from_str(&payload.object) {
         Ok(it) => it,
         Err(_) => return Err(Error::Other),
@@ -77,7 +82,8 @@ async fn update_name(
             q = r#"
             UPDATE node
             SET node_name = $1
-            WHERE node_id = $2;
+            WHERE node_id = $2
+            RETURNING node_id as id;
             "#;
         }
         Object::Street => {
@@ -85,21 +91,27 @@ async fn update_name(
             UPDATE street
             SET street_name = $1
             WHERE street_id = $2;
+            RETURNING street_id as id;
             "#;
         }
         Object::Building => {
             q = r#"
             UPDATE building
             SET building_name = $1
-            WHERE building_id = $2;
+            WHERE building_id = $2
+            RETURNING building_id as id;
             "#;
         }
     }
 
-    let query = sqlx::query(q).bind(payload.name).bind(payload.node_id);
-    let _ = query.fetch_one(&pool).await?;
-    dbg!("rename");
-    Ok(())
+    let query = sqlx::query_as::<_, Id>(q);
+    let id = query
+        .bind(payload.name)
+        .bind(payload.node_id)
+        .fetch_one(&pool)
+        .await?;
+
+    Ok(Json(id))
 }
 
 async fn nodes(State(pool): State<Pool<Postgres>>) -> Result<Json<Vec<SimpleNode>>> {
