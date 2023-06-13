@@ -102,7 +102,7 @@ SELECT n1.node_id,
     n1.node_name,
     n1.streets_uuid,
     CASE
-        WHEN n.parrent_id > 0 THEN true
+        WHEN n.parrent_id >= 0 THEN true
         ELSE false
     END as nested
 FROM node as n
@@ -146,9 +146,9 @@ WHERE street_uuid = '778d1c3b-cf00-438d-bc31-095f991e2247';
 --
 -- @block create buildinng
 INSERT INTO building (street_id, building_name)
-VALUES (1, '2'),
-    (1, '4'),
-    (1, '8');
+VALUES (2, '2'),
+    (2, '4'),
+    (2, '8');
 --
 -- @block remove
 DELETE FROM node
@@ -179,7 +179,18 @@ FROM node as n
 GROUP BY n.parrent_id
 HAVING n.parrent_id = 40;
 --
--- @block
-SELECT parrent_id
-FROM node
-WHERE node_id = 0
+-- @block select street with nested
+SELECT s.street_id,
+    s.street_name,
+    s.street_uuid,
+    CASE
+        WHEN building.street_id >= 0 THEN true
+        ELSE false
+    END as nested
+FROM street as s
+    LEFT JOIN building ON building.street_id = s.street_id
+WHERE s.street_uuid = '9cf2e6e5-67d3-433f-bcc4-c56f97fbcccb'
+GROUP BY s.street_id,
+    s.street_uuid,
+    s.street_name,
+    nested;

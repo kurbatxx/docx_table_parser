@@ -301,6 +301,7 @@ struct Street {
     street_id: i32,
     street_uuid: Uuid,
     street_name: String,
+    nested: bool,
 }
 
 async fn create_street(
@@ -345,10 +346,25 @@ async fn get_streets(
     Path(uuid): Path<Uuid>,
 ) -> Result<Json<Vec<Street>>> {
     let streets_q = r#"
-    SELECT street_id, street_uuid, street_name
-    FROM street
-    WHERE street_uuid = $1
+    SELECT s.street_id,
+    s.street_name,
+    s.street_uuid,
+    CASE
+        WHEN building.street_id >= 0 THEN true
+        ELSE false
+    END as nested
+    FROM street as s
+    LEFT JOIN building ON building.street_id = s.street_id
+    WHERE s.street_uuid = $1
+    GROUP BY s.street_id,
+    s.street_uuid,
+    s.street_name,
+    nested;
     "#;
+
+    // SELECT street_id, street_uuid, street_name
+    // FROM street
+    // WHERE street_uuid = $1
 
     let streets = sqlx::query_as::<_, Street>(streets_q)
         .bind(&uuid)
