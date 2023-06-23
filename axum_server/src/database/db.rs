@@ -173,6 +173,7 @@ async fn node_with_nest(
     n1.parrent_id,
     n1.streets_uuid,
     nested
+    ORDER BY n1.node_name
     "#;
 
     let query = sqlx::query_as::<_, Node>(q);
