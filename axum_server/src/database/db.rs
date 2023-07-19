@@ -20,7 +20,7 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
     Router::new()
         .route("/nodes", get(nodes))
         .route("/node/:p_id", get(node))
-        .route("/node_with_nest/:p_id", get(node_with_nest))
+        .route("/get_nodes/:parrent_id", get(get_nodes))
         .route("/create_node", post(create_node))
         .route("/drop_node/:node_id", post(drop_node))
         .route("/update_name", post(update_name))
@@ -36,7 +36,7 @@ struct Node {
     node_id: i32,
     parrent_id: i32,
     node_name: String,
-    nested: bool,
+    has_nest: bool,
     streets_uuid: Option<Uuid>,
 }
 
@@ -145,40 +145,31 @@ async fn node(
     Ok(Json(nodes))
 }
 
-async fn node_with_nest(
+async fn get_nodes(
     State(pool): State<Pool<Postgres>>,
-    Path(p_id): Path<i32>,
+    Path(parrent_id): Path<i32>,
 ) -> Result<Json<Vec<Node>>> {
-    dbg!(p_id);
     let q = r#"
-    SELECT n1.node_id,
-    n1.parrent_id,
-    n1.node_name,
-    n1.streets_uuid,
-    CASE
-        WHEN n.parrent_id > 0 THEN true
-        ELSE false
-    END as nested
-    FROM node as n
-    RIGHT JOIN (
-        SELECT node_id,
-            parrent_id,
-            node_name,
-            streets_uuid
-        FROM node
-        WHERE parrent_id = $1
-    ) as n1 ON n1.node_id = n.parrent_id
-    GROUP BY n1.node_id,
-    n1.node_name,
-    n1.parrent_id,
-    n1.streets_uuid,
-    nested
-    ORDER BY n1.node_name
+    WITH root AS (SELECT node_id, parrent_id, node_name, streets_uuid 
+    FROM node 
+    WHERE parrent_id = $1 )
+
+    SELECT root.node_id, root.parrent_id, root.node_name, 
+    CASE 
+	    WHEN COUNT(node.node_id) > 0 THEN TRUE
+	    ELSE FALSE
+    END
+    AS has_nest, root.streets_uuid FROM root
+
+    LEFT JOIN node 
+    ON node.parrent_id = root.node_id
+    GROUP BY root.node_id, root.parrent_id, root.node_name, root.streets_uuid
+    ORDER BY root.node_name
     "#;
 
     let query = sqlx::query_as::<_, Node>(q);
 
-    let nodes = query.bind(p_id).fetch_all(&pool).await?;
+    let nodes = query.bind(parrent_id).fetch_all(&pool).await?;
     Ok(Json(nodes))
 }
 

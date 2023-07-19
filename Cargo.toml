@@ -5,8 +5,7 @@ edition = "2021"
 
 [workspace]
 
-members = ["dioxus_app", "axum_server"]
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = ["axum_server"]
 
 [dependencies]
 anyhow = "1"
