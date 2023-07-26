@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use axum::{
     extract::{self, Path, State},
     routing::{get, post},
@@ -23,7 +21,7 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/get_nodes/:parrent_id", get(get_nodes))
         .route("/create_node", post(create_node))
         .route("/drop_node/:node_id", post(drop_node))
-        .route("/update_name", post(update_name))
+        .route("/update_name", post(update_node_name))
         .route("/create_street", post(create_street))
         .route("/get_streets/:uuid", get(get_streets))
         .route("/create_building", post(create_building))
@@ -34,10 +32,13 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
 #[derive(Debug, FromRow, Serialize)]
 struct Node {
     node_id: i32,
+    node_type: NodeType,
     parrent_id: i32,
     node_name: String,
-    has_nest: bool,
-    streets_uuid: Option<Uuid>,
+    #[sqlx(default)]
+    has_nest: Option<bool>,
+    #[sqlx(default)]
+    deputat_uuid: Option<Uuid>,
 }
 
 #[derive(Debug, FromRow, Serialize)]
@@ -48,17 +49,20 @@ struct SimpleNode {
 }
 
 #[derive(Debug, FromRow, Serialize, Deserialize)]
-struct RenameObject {
+struct RenameNode {
     node_id: i32,
-    object: String,
     name: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, EnumString)]
-#[strum(serialize_all = "camelCase")]
-enum Object {
-    Node,
+#[derive(Debug, Serialize, Deserialize, EnumString, sqlx::Type)]
+#[strum(serialize_all = "lowercase")]
+#[serde(rename_all = "lowercase")]
+enum NodeType {
+    #[sqlx(rename = "address")]
+    Address,
+    #[sqlx(rename = "street")]
     Street,
+    #[sqlx(rename = "building")]
     Building,
 }
 
@@ -67,51 +71,25 @@ struct Id {
     id: i32,
 }
 
-async fn update_name(
+async fn update_node_name(
     State(pool): State<Pool<Postgres>>,
-    extract::Json(payload): extract::Json<RenameObject>,
-) -> Result<Json<Id>> {
-    let obj = match Object::from_str(&payload.object) {
-        Ok(it) => it,
-        Err(_) => return Err(Error::Other),
-    };
-
-    let q;
-    match obj {
-        Object::Node => {
-            q = r#"
+    extract::Json(payload): extract::Json<RenameNode>,
+) -> Result<Json<Node>> {
+    let q = r#"
             UPDATE node
             SET node_name = $1
             WHERE node_id = $2
-            RETURNING node_id as id;
+            RETURNING *;
             "#;
-        }
-        Object::Street => {
-            q = r#"
-            UPDATE street
-            SET street_name = $1
-            WHERE street_id = $2;
-            RETURNING street_id as id;
-            "#;
-        }
-        Object::Building => {
-            q = r#"
-            UPDATE building
-            SET building_name = $1
-            WHERE building_id = $2
-            RETURNING building_id as id;
-            "#;
-        }
-    }
 
-    let query = sqlx::query_as::<_, Id>(q);
-    let id = query
+    let query = sqlx::query_as::<_, Node>(q);
+    let node = query
         .bind(payload.name)
         .bind(payload.node_id)
         .fetch_one(&pool)
         .await?;
 
-    Ok(Json(id))
+    Ok(Json(node))
 }
 
 async fn nodes(State(pool): State<Pool<Postgres>>) -> Result<Json<Vec<SimpleNode>>> {
@@ -150,20 +128,31 @@ async fn get_nodes(
     Path(parrent_id): Path<i32>,
 ) -> Result<Json<Vec<Node>>> {
     let q = r#"
-    WITH root AS (SELECT node_id, parrent_id, node_name, streets_uuid 
-    FROM node 
-    WHERE parrent_id = $1 )
-
-    SELECT root.node_id, root.parrent_id, root.node_name, 
-    CASE 
-	    WHEN COUNT(node.node_id) > 0 THEN TRUE
-	    ELSE FALSE
-    END
-    AS has_nest, root.streets_uuid FROM root
-
-    LEFT JOIN node 
-    ON node.parrent_id = root.node_id
-    GROUP BY root.node_id, root.parrent_id, root.node_name, root.streets_uuid
+    WITH root AS (
+	SELECT node_id,
+		node_type,
+		parrent_id,
+		node_name,
+		deputat_uuid
+	FROM node
+	WHERE parrent_id = $1
+    )
+    SELECT root.node_id,
+        root.node_type,
+        root.parrent_id,
+        root.node_name,
+        CASE
+            WHEN COUNT(node.node_id) > 0 THEN TRUE
+            ELSE FALSE
+        END AS has_nest,
+        root.deputat_uuid
+    FROM root
+        LEFT JOIN node ON node.parrent_id = root.node_id
+    GROUP BY root.node_id,
+        root.node_type,
+        root.parrent_id,
+        root.node_name,
+        root.deputat_uuid
     ORDER BY root.node_name
     "#;
 
@@ -177,22 +166,24 @@ async fn get_nodes(
 struct CreateNode {
     parrent_id: i32,
     node_name: String,
+    node_type: NodeType,
 }
 async fn create_node(
     State(pool): State<Pool<Postgres>>,
     extract::Json(payload): extract::Json<CreateNode>,
-) -> Result<Json<SimpleNode>> {
+) -> Result<Json<Node>> {
     let q = r#"
-    INSERT INTO node (parrent_id, node_name)
-    VALUES ($1, $2) 
-    returning node_id, parrent_id, node_name
+    INSERT INTO node (parrent_id, node_name, node_type)
+    VALUES ($1, $2, $3) 
+    RETURNING *
     "#;
 
-    let query = sqlx::query_as::<_, SimpleNode>(q);
+    let query = sqlx::query_as::<_, Node>(q);
 
     let node = query
         .bind(&payload.parrent_id)
         .bind(&payload.node_name.trim())
+        .bind(&payload.node_type)
         .fetch_one(&pool)
         .await?;
     Ok(Json(node))

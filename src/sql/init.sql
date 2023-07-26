@@ -1,33 +1,35 @@
 -- @block create node table
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 --
+CREATE TYPE NodeType AS ENUM ('address', 'building', 'street');
 DROP TABLE IF EXISTS node;
 CREATE TABLE node(
     node_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    node_type NodeType DEFAULT 'address',
     parrent_id integer,
     node_name text,
-    streets_uuid uuid
+    deputat_uuid uuid
 );
 ALTER TABLE node
 ADD CONSTRAINT uniq_node_names_on_level UNIQUE (parrent_id, node_name);
 --
-DROP TABLE IF EXISTS street;
-CREATE TABLE street(
-    street_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    street_uuid uuid,
-    street_name text
-);
-ALTER TABLE street
-ADD CONSTRAINT uniq_street_name_with_uuid UNIQUE (street_uuid, street_name);
---
-DROP TABLE IF EXISTS building;
-CREATE TABLE building(
-    building_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
-    street_id integer,
-    building_name text
-);
-ALTER TABLE building
-ADD CONSTRAINT uniq_building_name_with_street_id UNIQUE (street_id, building_name);
+-- DROP TABLE IF EXISTS street;
+-- CREATE TABLE street(
+--     street_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+--     street_uuid uuid,
+--     street_name text
+-- );
+-- ALTER TABLE street
+-- ADD CONSTRAINT uniq_street_name_with_uuid UNIQUE (street_uuid, street_name);
+-- --
+-- DROP TABLE IF EXISTS building;
+-- CREATE TABLE building(
+--     building_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+--     street_id integer,
+--     building_name text
+-- );
+-- ALTER TABLE building
+-- ADD CONSTRAINT uniq_building_name_with_street_id UNIQUE (street_id, building_name);
 --
 INSERT INTO node (parrent_id, node_name)
 VALUES (0, 'Казахстан'),
