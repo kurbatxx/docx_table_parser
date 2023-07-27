@@ -20,9 +20,9 @@ async fn main() -> Result<()> {
 
     create_dep_table(&pool).await?;
 
-    raion.districts.iter().for_each(|dis| {
+    raion.districts.into_iter().for_each(|dis| {
         println!("{}", &dis.candidate);
-        let d = tokio::spawn(async { insert_dep(&pool, dis).await });
+        let d = tokio::spawn(async move { insert_dep(&pool, &dis).await });
 
         println!("***")
     });
