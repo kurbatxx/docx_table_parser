@@ -4,15 +4,14 @@ use docx_rs::*;
 use serde_json::Value;
 use std::{fs, io::Read, ops::Not};
 
-use crate::model::{District, Raion};
-
-mod model;
-
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Args {
     name: String,
 }
+
+use crate::model::{District, Raion};
+pub mod model;
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();

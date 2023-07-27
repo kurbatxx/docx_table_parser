@@ -4,7 +4,7 @@
 GET {{server_url}}/nodes HTTP/1.1
 
 ###
-GET {{server_url}}/get_nodes/0 HTTP/1.1
+GET {{server_url}}/get_nodes/36 HTTP/1.1
 
 ###
 POST {{server_url}}/create_node HTTP/1.1

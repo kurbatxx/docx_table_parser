@@ -5,7 +5,7 @@ use axum::{
 };
 
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, Pool, Postgres, Row};
+use sqlx::{FromRow, Pool, Postgres};
 
 use strum_macros::EnumString;
 use uuid::Uuid;
@@ -22,8 +22,6 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/create_node", post(create_node))
         .route("/drop_node/:node_id", post(drop_node))
         .route("/update_name", post(update_node_name))
-        .route("/create_street", post(create_street))
-        .route("/get_streets/:uuid", get(get_streets))
         .route("/create_building", post(create_building))
         .route("/get_buildings/:street_id", get(get_buildings))
         .with_state(pool)
@@ -189,94 +187,20 @@ async fn create_node(
     Ok(Json(node))
 }
 
-#[derive(Debug, FromRow, Serialize)]
-struct Remove {
-    elements_count: i64,
-    parrent_id: i32,
-}
-
 async fn drop_node(
     State(pool): State<Pool<Postgres>>,
     Path(node_id): Path<i32>,
-) -> Result<Json<Remove>> {
-    let mut tnx = pool.begin().await?;
-
-    let parrent_q = r#"
-    SELECT
-        parrent_id
-    FROM
-        node
-    WHERE
-        node_id = $1
-    "#;
-
-    let query = sqlx::query(parrent_q);
-    let row = query.bind(node_id).fetch_one(&mut tnx).await?;
-    let parrent_id: i32 = row.get("parrent_id");
-
-    let mut pp = 0;
-
-    if parrent_id > 0 {
-        let pp_q = r#"
-        SELECT
-            parrent_id
-        FROM
-            node
-        WHERE
-            node_id = $1
-        "#;
-
-        let query = sqlx::query(pp_q);
-        let row = query.bind(&parrent_id).fetch_one(&mut tnx).await?;
-        pp = row.get("parrent_id")
-    }
-
-    let count_q = r#"
-    SELECT
-        COUNT(node_name)
-    FROM
-        node
-    WHERE
-        parrent_id = $1
-    "#;
-
-    let query = sqlx::query(count_q);
-    let row = query.bind(&parrent_id).fetch_one(&mut tnx).await?;
-    let count: i64 = row.get("count");
-
+) -> Result<Json<Node>> {
     let q = r#"
-    DELETE FROM
-        node
-    WHERE
-        node_id = $1
-        AND (
-            SELECT
-                COUNT(node_name)
-            FROM
-                node
-            WHERE
-                parrent_id = $1
-        ) = 0
-    returning node_id, parrent_id, node_name
+    DELETE FROM node
+    WHERE node_id = $1
+    RETURNING *
     "#;
 
-    let query = sqlx::query_as::<_, SimpleNode>(q);
-    let _node = query.bind(node_id).fetch_one(&mut tnx).await?;
+    let query = sqlx::query_as::<_, Node>(q);
 
-    let remove = Remove {
-        elements_count: count - 1,
-        parrent_id: pp,
-    };
-
-    tnx.commit().await?;
-
-    Ok(Json(remove))
-}
-
-#[derive(Debug, Deserialize)]
-struct CreateStreet {
-    node_id: i32,
-    street_name: String,
+    let node = query.bind(&node_id).fetch_one(&pool).await?;
+    Ok(Json(node))
 }
 
 #[derive(Debug, FromRow, Serialize)]
@@ -285,76 +209,6 @@ struct Street {
     street_uuid: Uuid,
     street_name: String,
     nested: bool,
-}
-
-async fn create_street(
-    State(pool): State<Pool<Postgres>>,
-    extract::Json(payload): extract::Json<CreateStreet>,
-) -> Result<Json<Street>> {
-    let mut tnx = pool.begin().await?;
-
-    let streets_uuid_q = r#"
-    UPDATE node
-    SET streets_uuid = COALESCE(streets_uuid, uuid_generate_v4())
-    WHERE node_id = $1
-    returning streets_uuid
-    "#;
-
-    let create_street_q = r#"
-    INSERT INTO street (street_uuid, street_name)
-    VALUES ($1, $2)
-    returning street_id, street_uuid, street_name
-    "#;
-
-    let streets_uuid: (Uuid,) = sqlx::query_as(streets_uuid_q)
-        .bind(&payload.node_id)
-        .fetch_one(&mut tnx)
-        .await?;
-
-    dbg!(&streets_uuid);
-
-    let street = sqlx::query_as::<_, Street>(create_street_q)
-        .bind(&streets_uuid.0)
-        .bind(&payload.street_name.trim_end())
-        .fetch_one(&mut tnx)
-        .await?;
-
-    tnx.commit().await?;
-
-    Ok(Json(street))
-}
-
-async fn get_streets(
-    State(pool): State<Pool<Postgres>>,
-    Path(uuid): Path<Uuid>,
-) -> Result<Json<Vec<Street>>> {
-    let streets_q = r#"
-    SELECT s.street_id,
-    s.street_name,
-    s.street_uuid,
-    CASE
-        WHEN building.street_id >= 0 THEN true
-        ELSE false
-    END as nested
-    FROM street as s
-    LEFT JOIN building ON building.street_id = s.street_id
-    WHERE s.street_uuid = $1
-    GROUP BY s.street_id,
-    s.street_uuid,
-    s.street_name,
-    nested;
-    "#;
-
-    // SELECT street_id, street_uuid, street_name
-    // FROM street
-    // WHERE street_uuid = $1
-
-    let streets = sqlx::query_as::<_, Street>(streets_q)
-        .bind(&uuid)
-        .fetch_all(&pool)
-        .await?;
-
-    Ok(Json(streets))
 }
 
 #[derive(Debug, Deserialize)]

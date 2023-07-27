@@ -1,11 +1,11 @@
 use std::ops::Not;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct District {
-    num: String,
-    address: String,
+    pub num: String,
+    pub address: String,
     pub candidate: String,
     pub streets: Vec<Street>,
 }
@@ -52,7 +52,7 @@ impl District {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Street {
     pub name: String,
     // no show null
@@ -81,7 +81,7 @@ impl Street {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Raion {
     name: String,
     pub districts: Vec<District>,

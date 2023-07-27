@@ -13,6 +13,11 @@ CREATE TABLE node(
 ALTER TABLE node
 ADD CONSTRAINT uniq_node_names_on_level UNIQUE (parrent_id, node_name);
 --
+DROP TABLE IF EXISTS deputat;
+CREATE TABLE deputat(
+    deputat_uuid uuid integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    deputat_name text,
+);
 -- DROP TABLE IF EXISTS street;
 -- CREATE TABLE street(
 --     street_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
