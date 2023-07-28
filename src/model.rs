@@ -57,7 +57,7 @@ pub struct Street {
     pub name: String,
     // no show null
     #[serde(skip_serializing_if = "Option::is_none")]
-    numbers: Option<Vec<String>>,
+    pub numbers: Option<Vec<String>>,
 }
 
 impl Street {

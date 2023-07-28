@@ -28,6 +28,8 @@ uuid = { version = "1", features = ["serde", "v4"] }
 
 dotenvy = "0.15"
 
+strum = "0.25"
+strum_macros = "0.25"
 
 [[bin]]
 name = "docx_parser"

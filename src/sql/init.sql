@@ -1,6 +1,7 @@
 -- @block create node table
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 --
+DROP TYPE IF EXISTS NodeType;
 CREATE TYPE NodeType AS ENUM ('address', 'building', 'street');
 DROP TABLE IF EXISTS node;
 CREATE TABLE node(

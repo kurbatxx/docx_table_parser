@@ -28,7 +28,7 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
 }
 
 #[derive(Debug, FromRow, Serialize)]
-struct Node {
+pub struct Node {
     node_id: i32,
     node_type: NodeType,
     parrent_id: i32,
@@ -251,6 +251,7 @@ async fn get_buildings(
     SELECT building_id, street_id, building_name
     FROM building
     WHERE street_id = $1
+    ORDER BY ABS(building_name)
     "#;
 
     let buildings = sqlx::query_as::<_, Building>(buildings_q)
