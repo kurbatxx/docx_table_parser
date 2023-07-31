@@ -1,23 +1,30 @@
 -- @block create node table
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+DROP TABLE IF EXISTS deputat_info;
+DROP TABLE IF EXISTS node;
+-- @block create node table
+--CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 --
 DROP TYPE IF EXISTS NodeType;
 CREATE TYPE NodeType AS ENUM ('address', 'building', 'street');
 DROP TABLE IF EXISTS node;
 CREATE TABLE node(
-    node_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    --node_id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    node_id SERIAL PRIMARY KEY,
     node_type NodeType DEFAULT 'address',
     parrent_id integer,
     node_name text,
-    deputat_uuid uuid
+    --deputat_uuid uuid
+    deputat_id integer
 );
 ALTER TABLE node
 ADD CONSTRAINT uniq_node_names_on_level UNIQUE (parrent_id, node_name);
 --
-DROP TABLE IF EXISTS deputat;
-CREATE TABLE deputat(
-    deputat_uuid uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-    deputat_name text
+DROP TABLE IF EXISTS deputat_info;
+CREATE TABLE deputat_info(
+    --deputat_uuid uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
+    deputat_id SERIAL PRIMARY KEY,
+    deputat_name text,
+    uch_number integer
 );
 -- DROP TABLE IF EXISTS street;
 -- CREATE TABLE street(

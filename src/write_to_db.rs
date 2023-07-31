@@ -3,7 +3,6 @@ mod model;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, FromRow, PgPool};
-
 use strum_macros::EnumString;
 use tokio::fs;
 use uuid::Uuid;
@@ -19,7 +18,7 @@ pub struct Node {
     #[sqlx(default)]
     has_nest: Option<bool>,
     #[sqlx(default)]
-    deputat_uuid: Option<Uuid>,
+    deputat_id: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, EnumString, sqlx::Type)]
@@ -57,9 +56,9 @@ async fn main() -> Result<()> {
     for dis in raion.districts {
         println!("{}", &dis.candidate);
         let d = insert_dep(&pool, &dis).await?;
-        println!("{}", &d.deputat_uuid);
+        println!("{}", &d.deputat_id);
 
-        insert_streets(&pool, &dis, 19, &d.deputat_uuid).await?
+        insert_streets(&pool, &dis, 19, d.deputat_id).await?
     }
 
     Ok(())
@@ -67,16 +66,17 @@ async fn main() -> Result<()> {
 
 async fn create_dep_table(pool: &PgPool) -> Result<()> {
     let q = r#" 
-        DROP TABLE IF EXISTS deputat
+        DROP TABLE IF EXISTS deputat_info
         "#;
 
     let query = sqlx::query(q);
     let _ = query.fetch_optional(pool).await?;
 
     let q = r#"
-    CREATE TABLE deputat(
-        deputat_uuid uuid DEFAULT uuid_generate_v4() PRIMARY KEY,
-        deputat_name text)
+    CREATE TABLE deputat_info(
+        deputat_id SERIAL PRIMARY KEY,
+        deputat_name text,
+        uch_number integer)
     "#;
 
     let query = sqlx::query(q);
@@ -87,29 +87,36 @@ async fn create_dep_table(pool: &PgPool) -> Result<()> {
 
 #[derive(FromRow)]
 struct Deputat {
-    deputat_uuid: Uuid,
+    deputat_id: i32,
     deputat_name: String,
+    uch_number: i32,
 }
 
 async fn insert_dep(pool: &PgPool, dis: &District) -> Result<Deputat> {
     let q = r#"
-    INSERT INTO deputat(deputat_name)
-    VALUES($1)
+    INSERT INTO deputat_info(deputat_name, uch_number)
+    VALUES($1, $2)
     RETURNING *
     "#;
 
     let query = sqlx::query_as::<_, Deputat>(q);
-    let dep = query.bind(&dis.candidate).fetch_one(pool).await?;
+    let dep = query
+        .bind(&dis.candidate)
+        .bind(
+            &dis.num
+                .chars()
+                .filter(|c| c.is_digit(10))
+                .collect::<String>()
+                .parse::<i32>()
+                .unwrap_or_default(),
+        )
+        .fetch_one(pool)
+        .await?;
 
     Ok(dep)
 }
 
-async fn insert_streets(
-    pool: &PgPool,
-    dis: &District,
-    parrent_id: i32,
-    dep_uuid: &Uuid,
-) -> Result<()> {
+async fn insert_streets(pool: &PgPool, dis: &District, parrent_id: i32, dep_id: i32) -> Result<()> {
     let q = r#"
     INSERT INTO node(node_name, parrent_id, node_type)
     VALUES($1, $2, $3)
@@ -129,30 +136,59 @@ async fn insert_streets(
             Ok(node) => match item.numbers.clone() {
                 Some(numbers) => {
                     for n in numbers {
-                        instert_building(pool, &n, node.node_id, dep_uuid).await
+                        instert_building(pool, &n, node.node_id, dep_id).await
                     }
                 }
                 None => {
                     dbg!("NO BUILDINGS");
                 }
             },
-            Err(err) => {
-                println!("{}", item.name);
+            Err(_err) => {
+                println!("{}, {}", item.name, parrent_id);
+
+                let q = r#"
+                SELECT * FROM node
+                WHERE parrent_id = $1 AND node_name = $2
+                LIMIT 1;
+                "#;
+
+                let query = sqlx::query_as::<_, Node>(q);
+                let node = query
+                    .bind(parrent_id)
+                    .bind(&item.name)
+                    .fetch_one(pool)
+                    .await;
+
+                match node {
+                    Ok(node) => match item.numbers.clone() {
+                        Some(numbers) => {
+                            for n in numbers {
+                                instert_building(pool, &n, node.node_id, dep_id).await
+                            }
+                        }
+                        None => {
+                            dbg!("NO BUILDINGS");
+                        }
+                    },
+                    Err(_) => {
+                        dbg!("dublicate not found");
+                    }
+                }
             }
         }
     }
     Ok(())
 }
 
-async fn instert_building(pool: &PgPool, name: &str, parrent_id: i32, deputat: &Uuid) {
+async fn instert_building(pool: &PgPool, name: &str, parrent_id: i32, deputat: i32) {
     let q = r#"
-    INSERT INTO node(node_name, parrent_id, node_type, deputat_uuid)
+    INSERT INTO node(node_name, parrent_id, node_type, deputat_id)
     VALUES($1, $2, $3, $4)
     RETURNING *
     "#;
 
     let query = sqlx::query_as::<_, Node>(q);
-    let node = query
+    let _node = query
         .bind(&name)
         .bind(parrent_id)
         .bind(NodeType::Building)
