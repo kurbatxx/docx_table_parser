@@ -17,7 +17,7 @@ mod error;
 pub fn db_routes(pool: Pool<Postgres>) -> Router {
     Router::new()
         .route("/nodes", get(nodes))
-        .route("/node/:p_id", get(node))
+        .route("/get_simple_nodes/:parrent_id", get(get_simple_nodes))
         .route("/get_nodes/:parrent_id", get(get_nodes))
         .route("/create_node", post(create_node))
         .route("/drop_node/:node_id", post(drop_node))
@@ -44,6 +44,8 @@ struct SimpleNode {
     node_id: i32,
     parrent_id: i32,
     node_name: String,
+    #[sqlx(default)]
+    deputat_id: Option<i32>,
 }
 
 #[derive(Debug, FromRow, Serialize, Deserialize)]
@@ -102,22 +104,23 @@ async fn nodes(State(pool): State<Pool<Postgres>>) -> Result<Json<Vec<SimpleNode
     Ok(Json(nodes))
 }
 
-async fn node(
+async fn get_simple_nodes(
     State(pool): State<Pool<Postgres>>,
-    Path(p_id): Path<i32>,
+    Path(parrent_id): Path<i32>,
 ) -> Result<Json<Vec<SimpleNode>>> {
-    dbg!(p_id);
     let q = r#"
     SELECT node_id, 
         parrent_id, 
-        node_name 
+        node_name,
+        deputat_id
     FROM node 
     WHERE parrent_id = $1
+    ORDER BY node_name
     "#;
 
     let query = sqlx::query_as::<_, SimpleNode>(q);
 
-    let nodes = query.bind(p_id).fetch_all(&pool).await?;
+    let nodes = query.bind(parrent_id).fetch_all(&pool).await?;
     Ok(Json(nodes))
 }
 
