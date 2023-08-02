@@ -6,7 +6,6 @@ use axum::{
 
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, Pool, Postgres};
-
 use strum_macros::EnumString;
 use uuid::Uuid;
 
@@ -24,6 +23,7 @@ pub fn db_routes(pool: Pool<Postgres>) -> Router {
         .route("/update_name", post(update_node_name))
         .route("/create_building", post(create_building))
         .route("/get_buildings/:street_id", get(get_buildings))
+        .route("/get_deputat/:deputat_id", get(get_deputat))
         .with_state(pool)
 }
 
@@ -120,7 +120,7 @@ async fn get_simple_nodes(
 
     let query = sqlx::query_as::<_, SimpleNode>(q);
 
-    let nodes = query.bind(parrent_id).fetch_all(&pool).await?;
+    let nodes: Vec<SimpleNode> = query.bind(parrent_id).fetch_all(&pool).await?;
     Ok(Json(nodes))
 }
 
@@ -263,4 +263,28 @@ async fn get_buildings(
         .await?;
 
     Ok(Json(buildings))
+}
+
+#[derive(Debug, FromRow, Serialize)]
+struct Deputat {
+    deputat_id: i32,
+    deputat_name: String,
+    uch_number: i32,
+}
+
+async fn get_deputat(
+    State(pool): State<Pool<Postgres>>,
+    Path(deputat_id): Path<i32>,
+) -> Result<Json<Deputat>> {
+    let q = r#"
+    SELECT *
+    FROM deputat_info 
+    WHERE deputat_id = $1
+    LIMIT 1
+    "#;
+
+    let query = sqlx::query_as::<_, Deputat>(q);
+
+    let dep: Deputat = query.bind(deputat_id).fetch_one(&pool).await?;
+    Ok(Json(dep))
 }
