@@ -14,6 +14,8 @@ mod db;
 #[tokio::main]
 async fn main() -> Result<()> {
     let url = dotenvy::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let port = dotenvy::var("PORT").expect("PORT must be set");
+
     let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&url)
@@ -26,7 +28,7 @@ async fn main() -> Result<()> {
     let routes_all = Router::new().merge(db::db_routes(pool).layer(cors));
 
     //let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-    let addr = format!("{}:{}", local_ip().unwrap(), 8080);
+    let addr = format!("{}:{}", local_ip().unwrap(), port);
     let addr: SocketAddr = addr.parse().expect("Wrong address");
 
     println!("-> LISTENING on {addr}\n");

@@ -35,7 +35,7 @@ enum NodeType {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let file = fs::read("resut_v2.json").await.unwrap();
+    let file = fs::read("resut.json").await.unwrap();
     let raion: Raion = serde_json::from_slice(&file).unwrap();
 
     let url = dotenvy::var("DATABASE_URL").expect("DATABASE_URL must be set");
@@ -135,12 +135,31 @@ async fn insert_streets(pool: &PgPool, dis: &District, parrent_id: i32, dep_id: 
         match node {
             Ok(node) => match item.numbers.clone() {
                 Some(numbers) => {
+                    //write to null
+                    let q = r#"
+                    UPDATE node
+                    SET deputat_id = null
+                    WHERE node_id = $1
+                    "#;
+
+                    let query = sqlx::query(q);
+                    let _ = query.bind(node.node_id).fetch_one(pool).await;
+
                     for n in numbers {
                         instert_building(pool, &n, node.node_id, dep_id).await
                     }
                 }
                 None => {
                     dbg!("NO BUILDINGS");
+
+                    let q = r#"
+                    UPDATE node
+                    SET deputat_id = $1
+                    WHERE node_id = $2
+                    "#;
+
+                    let query = sqlx::query(q);
+                    let _ = query.bind(dep_id).bind(node.node_id).fetch_one(pool).await;
                 }
             },
             Err(_err) => {
@@ -162,12 +181,31 @@ async fn insert_streets(pool: &PgPool, dis: &District, parrent_id: i32, dep_id: 
                 match node {
                     Ok(node) => match item.numbers.clone() {
                         Some(numbers) => {
+                            //write to null
+                            let q = r#"
+                            UPDATE node
+                            SET deputat_id = null
+                            WHERE node_id = $1
+                            "#;
+
+                            let query = sqlx::query(q);
+                            let _ = query.bind(node.node_id).fetch_one(pool).await;
+
                             for n in numbers {
                                 instert_building(pool, &n, node.node_id, dep_id).await
                             }
                         }
                         None => {
                             dbg!("NO BUILDINGS");
+
+                            let q = r#"
+                            UPDATE node
+                            SET deputat_id = $1
+                            WHERE node_id = $2
+                            "#;
+
+                            let query = sqlx::query(q);
+                            let _ = query.bind(dep_id).bind(node.node_id).fetch_one(pool).await;
                         }
                     },
                     Err(_) => {
